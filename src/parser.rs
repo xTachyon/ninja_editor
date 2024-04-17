@@ -8,7 +8,7 @@ type K = TokenKind;
 #[derive(Debug)]
 struct Rule<'x> {
     name: &'x str,
-    command: &'x str,
+    command: String,
 }
 
 #[derive(Debug)]
@@ -39,9 +39,10 @@ macro_rules! expect {
 fn parse_let<'x>(parser: &mut Parser<'x>, rule: &mut Rule<'x>, has_command: &mut bool) {
     let key = expect!(parser, Ident);
     let key = parser.source.str(&key);
-    expect!(parser, Eq);
-    let line = parser.lexer.until_eol();
-    let line = parser.source.str(&line);
+    expect!(parser, Equals);
+    let mut line = String::new();
+    parser.lexer.read_eval_string(&mut line, false);
+    // let line = parser.source.str(&line);
 
     match key {
         "command" => {
@@ -57,7 +58,10 @@ fn parse_rule<'x>(parser: &mut Parser<'x>) -> Item<'x> {
     let name = parser.source.str(&name_token);
     expect!(parser, Newline);
 
-    let mut rule = Rule { name, command: "" };
+    let mut rule = Rule {
+        name,
+        command: String::new(),
+    };
     let mut has_command = false;
 
     while let K::Indent = parser.lexer.peek().kind {
@@ -74,6 +78,17 @@ fn parse_rule<'x>(parser: &mut Parser<'x>) -> Item<'x> {
 }
 
 fn parse_build<'x>(parser: &mut Parser<'x>) -> Item<'x> {
+    let mut out = String::new();
+    loop {
+        out.clear();
+    
+        parser.lexer.read_eval_string(&mut out, true);
+        dbg!(&out);
+
+        if out.is_empty() {
+            break;
+        }
+    }
     todo!()
 }
 
