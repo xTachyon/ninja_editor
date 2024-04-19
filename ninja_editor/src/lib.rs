@@ -82,8 +82,9 @@ new_key_type! {
 
 struct Edge {
     rule: RuleKey,
-    ins: Vec<String>,
-    outs: Vec<String>,
+    rule_loc: Location,
+    // ins: Vec<String>,
+    // outs: Vec<String>,
 }
 
 #[derive(Default)]

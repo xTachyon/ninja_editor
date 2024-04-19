@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::{lexer::Location, Ninja, RuleKey, SourceId};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 struct RuleChange {
@@ -19,6 +19,14 @@ struct ChangeRaw<'x> {
 
 struct ChangesRaw<'x> {
     files: HashMap<SourceId, Vec<ChangeRaw<'x>>>,
+}
+impl<'x> ChangesRaw<'x> {
+    fn add_change(&mut self, loc: Location, new_text: &'x str) {
+        self.files
+            .entry(loc.source_id)
+            .or_default()
+            .push(ChangeRaw { loc: loc, new_text });
+    }
 }
 
 pub struct ChangeList<'x> {
@@ -56,14 +64,11 @@ impl<'x> ChangeList<'x> {
 
 fn process_rule_change<'x>(ninja: &Ninja, changes: &mut ChangesRaw<'x>, c: &'x RuleChange) {
     let rule = &ninja.data.rules[c.rule];
-    changes
-        .files
-        .entry(rule.name_loc.source_id)
-        .or_default()
-        .push(ChangeRaw {
-            loc: rule.name_loc,
-            new_text: &c.new_name,
-        })
+    changes.add_change(rule.name_loc, &c.new_name);
+
+    for i in ninja.data.edges.iter().filter(|x| c.rule == x.rule) {
+        changes.add_change(i.rule_loc, &c.new_name);
+    }
 }
 
 fn process_changes<'x>(ninja: &Ninja, changes: &mut ChangesRaw<'x>, c: &'x Change) {

@@ -97,8 +97,8 @@ fn parse_build<'x>(parser: &mut Parser<'x>, data: &mut Data) {
 
     expect!(parser, Colon);
 
-    let rule_name = expect!(parser, Ident);
-    let rule_name = parser.source.str(rule_name);
+    let rule_name_token = expect!(parser, Ident);
+    let rule_name = parser.source.str(&rule_name_token);
 
     let Some(&rule) = data.rules_by_name.get(rule_name) else {
         panic!("unknown rule `{}`", rule_name);
@@ -152,7 +152,10 @@ fn parse_build<'x>(parser: &mut Parser<'x>, data: &mut Data) {
         let _ = parse_let(parser);
     }
 
-    let edge = Edge { rule, ins, outs };
+    let edge = Edge {
+        rule,
+        rule_loc: rule_name_token.loc,
+    };
 
     data.edges.push(edge);
 }
