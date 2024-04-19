@@ -43,7 +43,7 @@ struct SourceId(u32);
 
 impl SourceManager {
     fn load<I: Into<PathBuf>>(&mut self, path: I) -> &'static Source {
-        fn inner<'x>(manager: &'x mut SourceManager, path: PathBuf) -> &'static Source {
+        fn inner(manager: &mut SourceManager, path: PathBuf) -> &'static Source {
             let id: u32 = manager.sources.len().try_into().unwrap();
             let id = SourceId(id);
 

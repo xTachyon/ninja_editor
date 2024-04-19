@@ -25,7 +25,7 @@ impl<'x> ChangesRaw<'x> {
         self.files
             .entry(loc.source_id)
             .or_default()
-            .push(ChangeRaw { loc: loc, new_text });
+            .push(ChangeRaw { loc, new_text });
     }
 }
 

@@ -21,7 +21,7 @@ macro_rules! expect {
     }};
 }
 
-fn parse_let<'x>(parser: &mut Parser<'x>) -> (String, String) {
+fn parse_let(parser: &mut Parser) -> (String, String) {
     let key_token = parser.lexer.read_ident();
     let key = parser.source.str_loc(key_token).to_string();
     expect!(parser, Equals);
@@ -69,7 +69,7 @@ fn parse_rule<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>) {
     data.rules_by_name.insert(name, rule);
 }
 
-fn parse_build<'x>(parser: &mut Parser<'x>, data: &mut Data) {
+fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
     let mut outs = Vec::new();
 
     let mut tmp = String::new();
@@ -160,7 +160,7 @@ fn parse_build<'x>(parser: &mut Parser<'x>, data: &mut Data) {
     data.edges.push(edge);
 }
 
-fn parse_var<'x>(parser: &mut Parser<'x>, data: &mut Data) {
+fn parse_var(parser: &mut Parser<'_>, data: &mut Data) {
     use std::collections::hash_map::Entry;
 
     let (key, value) = parse_let(parser);
@@ -170,7 +170,7 @@ fn parse_var<'x>(parser: &mut Parser<'x>, data: &mut Data) {
     };
 }
 
-fn parse_default<'x>(parser: &mut Parser<'x>, data: &mut Data) {
+fn parse_default(parser: &mut Parser<'_>, data: &mut Data) {
     let mut s = String::new();
     parser.lexer.read_path(&mut s);
 
@@ -180,7 +180,7 @@ fn parse_default<'x>(parser: &mut Parser<'x>, data: &mut Data) {
     }
 }
 
-fn parse_include<'x>(parser: &mut Parser<'x>, data: &mut Data, sm: &mut SourceManager) {
+fn parse_include(parser: &mut Parser<'_>, data: &mut Data, sm: &mut SourceManager) {
     let mut path = String::new();
     parser.lexer.read_path(&mut path);
 

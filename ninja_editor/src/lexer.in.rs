@@ -1,6 +1,6 @@
-use crate::ninja::SourceId;
+use crate::SourceId;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Location {
     pub start: usize,
     pub stop: usize,
@@ -80,6 +80,7 @@ impl<'x> Lexer<'x> {
         let mut marker = 0;
         
         #[allow(unused_unsafe)]
+        #[allow(clippy::absurd_extreme_comparisons)]
         /*!re2c
         re2c:define:YYCTYPE = "u8";
         re2c:define:YYPEEK = "self.text[offset]";
