@@ -1,9 +1,11 @@
+mod changelist;
 mod lexer;
 mod parser;
 
 use std::collections::HashMap;
 use std::path::Path;
 
+use changelist::ChangeList;
 use slotmap::{new_key_type, SlotMap};
 
 use crate::lexer::{Location, Token};
@@ -23,6 +25,12 @@ impl Source {
         debug_assert_eq!(self.id, loc.source_id);
         &self.text[loc.start..loc.stop]
     }
+    fn text_parser(&self) -> &str {
+        &self.text
+    }
+    fn text(&self) -> &str {
+        &self.text[0..self.text.len() - 1]
+    }
 }
 
 #[derive(Default)]
@@ -30,7 +38,7 @@ struct SourceManager {
     sources: Vec<&'static Source>, // TODO
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 struct SourceId(u32);
 
 impl SourceManager {
@@ -51,11 +59,15 @@ impl SourceManager {
         }
         inner(self, path.into())
     }
+    fn get(&self, id: SourceId) -> &'static Source {
+        self.sources[id.0 as usize]
+    }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default, Debug)]
 pub struct Rule<'x> {
     pub name: &'x str,
+    name_loc: Location,
     command: String,
     depfile: Option<String>,
     deps: Option<String>,
@@ -87,7 +99,7 @@ impl<'x> Data<'x> {
         let mut rules = SlotMap::with_key();
         let phony = rules.insert(Rule {
             name: "phony",
-            ..Default::default()
+            ..Rule::default()
         });
 
         let rules_by_name = HashMap::from([("phony", phony)]);
@@ -126,35 +138,6 @@ impl Ninja {
         &self.data
     }
     pub fn change(&self) -> ChangeList {
-        ChangeList {
-            ninja: self,
-            changes: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug)]
-struct RuleChange {
-    rule: RuleKey,
-    new_name: String,
-}
-
-#[derive(Debug)]
-enum Change {
-    RuleRename(RuleChange),
-}
-
-pub struct ChangeList<'x> {
-    ninja: &'x Ninja,
-    changes: Vec<Change>,
-}
-impl<'x> ChangeList<'x> {
-    pub fn rename_rule(&mut self, rule: RuleKey, new_name: String) {
-        self.changes
-            .push(Change::RuleRename(RuleChange { rule, new_name }));
-    }
-
-    pub fn commit(self) {
-        dbg!(self.changes);
+        ChangeList::new(self)
     }
 }

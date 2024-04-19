@@ -2,8 +2,7 @@ use crate::{
     lexer::{Lexer, TokenKind},
     Data, Edge, Rule, Source, SourceManager,
 };
-use slotmap::{new_key_type, SlotMap};
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 type K = TokenKind;
 
@@ -39,6 +38,7 @@ fn parse_rule<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>) {
 
     let mut rule = Rule {
         name,
+        name_loc: name_token.loc,
         ..Default::default()
     };
     let mut has_command = false;
@@ -209,7 +209,7 @@ fn parse_item<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>, sm: &mut SourceM
 
 pub fn parse(sm: &mut SourceManager, data: &mut Data, path: &Path) {
     let source = sm.load(path);
-    let lexer = Lexer::new(&source.text, source.id);
+    let lexer = Lexer::new(source.text_parser(), source.id);
     let mut parser = Parser { lexer, source };
 
     parse_item(&mut parser, data, sm);

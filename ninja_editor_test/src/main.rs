@@ -5,6 +5,9 @@ fn main() {
     let data = ninja.data();
     let mut changelist = ninja.change();
     for (key, rule) in data.rules.iter() {
+        if rule.name == "phony" {
+            continue;
+        }
         changelist.rename_rule(key, format!("p_{}", rule.name));
     }
 
