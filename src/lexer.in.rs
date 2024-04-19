@@ -1,23 +1,11 @@
 use crate::SourceId;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Location {
     pub start: usize,
     pub stop: usize,
     pub source_id: SourceId,
 }
-// impl Location {
-//     pub fn merge(&self, last: Location) -> Location  {
-//         debug_assert_eq!(self.source_id, last.source_id);
-//         debug_assert!(self.start < last.start);
-
-//         Location {
-//             start: self.start,
-//             stop: last.stop,
-//             source_id: self.source_id,
-//         }
-//     }
-// }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenKind {
@@ -35,15 +23,11 @@ pub enum TokenKind {
     Include,
     Subninja,
 
-    Comment,
     Indent,
-    Dollar,
-    DollarDollar,
-    LBrace,
-    RBrace,
     Pipe,
     Pipe2,
     PipeAt,
+    Comment,
 }
 #[derive(Debug)]
 pub struct Token {
@@ -56,20 +40,20 @@ impl Token {
     // }
 }
 
-struct TokenDisplay<'x> {
-    token: &'x Token,
-    text: &'x str,
-}
-impl<'x> std::fmt::Debug for TokenDisplay<'x> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{:?} -> `{}`",
-            self.token.kind,
-            &self.text[self.token.loc.start..self.token.loc.stop]
-        )
-    }
-}
+// struct TokenDisplay<'x> {
+//     token: &'x Token,
+//     text: &'x str,
+// }
+// impl<'x> std::fmt::Debug for TokenDisplay<'x> {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(
+//             f,
+//             "{:?} -> `{}`",
+//             self.token.kind,
+//             &self.text[self.token.loc.start..self.token.loc.stop]
+//         )
+//     }
+// }
 
 type K = TokenKind;
 
@@ -80,8 +64,6 @@ pub struct Lexer<'x> {
     source_id: SourceId,
 }
 
-const ZERO: u8 = b'\0';
-
 impl<'x> Lexer<'x> {
     pub fn new(text: &str, source_id: SourceId) -> Lexer {
         Lexer {
@@ -91,11 +73,7 @@ impl<'x> Lexer<'x> {
             source_id,
         }
     }
-    pub fn next(&mut self) -> Token {
-        let Some(&first) = self.text.get(self.offset) else {
-            panic!("already done");
-        };
-
+    pub fn next_impl(&mut self) -> Token {
         let start_offset = self.offset;
         let mut offset = self.offset;
         let token;
@@ -114,7 +92,7 @@ impl<'x> Lexer<'x> {
         simple_varname = [a-zA-Z0-9_-]+;
         varname = [a-zA-Z0-9_.-]+;
 
-        [ ]*"#"[^\000\n]*"\n" { continue; }
+        [ ]*"#"[^\000\n]*"\n" { token = K::Comment; break; }
         [ ]*"\r\n" { token = K::Newline;  break; }
         [ ]*"\n"   { token = K::Newline;  break; }
         [ ]+       { token = K::Indent;   break; }
@@ -148,15 +126,27 @@ impl<'x> Lexer<'x> {
 
         Token { kind: token, loc }
     }
+    pub fn next(&mut self) -> Token {
+        loop {
+            let next = self.next_impl();
+            if next.kind == K::Comment {
+                continue;
+            }
+            return next;
+        }
+    }
+    pub fn maybe_peek(&mut self, kind: K) -> bool {
+        let last_offset = self.offset;
+        let r = self.next();
+        if r.kind == kind {
+            return true;
+        }
+        self.offset = last_offset;
+        false
+    }
     pub fn peek(&mut self) -> Token {
         let last_offset = self.offset;
-        let r = loop {
-            let next = self.next();
-            // if next.kind == K::Whitespace {
-            //     continue;
-            // }
-            break next;
-        };
+        let r = self.next();
         self.offset = last_offset;
         r
     }
@@ -221,7 +211,7 @@ impl<'x> Lexer<'x> {
               continue 'lex;
             }
             "${"varname"}" {
-              *s += &self.text_str[start + 2..offset - start - 3];
+              *s += &self.text_str[start + 2..offset];
               continue 'lex;
             }
             "$"simple_varname {
@@ -247,78 +237,22 @@ impl<'x> Lexer<'x> {
             }
             */
         }
-		self.offset = start;
+		self.offset = offset;
         if path {
             self.eat_whitespace();
         }
     }
-    // pub fn read_eval_string(&mut self, _path: bool) {
-    //     let start_offset = self.offset;
-    //     loop {
-    //         let token = self.peek();
-    //         match token.kind {
-    //             K::Whitespace | K::Dollar | K::DollarDollar  => {}
-    //             _ => todo!(),
-    //         }
-    //     }
-    //     // let start_offset = self.offset;
-    //     // let first = self.text[self.offset];
-    //     // self.offset += 1;
-
-    //     // match first {
-    //     //     0 => todo!(),
-
-    //     //     _ => todo!(),
-    //     // }
-    // }
-    pub fn until_eol(&mut self) -> Token {
-        while self.text[self.offset] == b' ' {
-            self.offset += 1;
-        }
-        let start_offset = self.offset;
-        loop {
-            let current = self.text[self.offset];
-            if current == b'\n' || current == ZERO {
-                break;
-            }
-            self.offset += 1;
-        }
-        let loc = Location {
-            start: start_offset,
-            stop: self.offset,
-            source_id: self.source_id,
-        };
-        Token {
-            loc,
-            kind: K::Ident,
-        }
+    pub fn read_path(&mut self, s: &mut String) {
+        self.read_eval_string(s, true)
     }
-    pub fn loc_extend_to_last(&self, first: Location) -> Location {
-        debug_assert_eq!(self.source_id, first.source_id);
-
-        Location {
-            start: first.start,
-            stop: self.offset,
-            source_id: self.source_id,
+    pub fn read_var_value(&mut self, s: &mut String) {
+        self.read_eval_string(s, false)
+    }
+    pub fn read_ident(&mut self) -> Location {
+        let next = self.next();
+        match next.kind {
+            K::Ident | K::Pool => next.loc,
+            _ => panic!("expected ident"),
         }
     }
 }
-
-// pub fn lex(text: &mut String) -> Vec<Token> {
-//     if text.as_bytes().contains(&b'\0') {
-//         todo!("text can't contain zeros");
-//     }
-//     text.push('\0');
-
-//     let mut tokens = Vec::new();
-//     let mut lexer = Lexer::new(text);
-//     // while let Some(tok) = lexer.next() {
-//     //     if matches!(tok.kind, K::Comment | K::Whitespace) {
-//     //         continue;
-//     //     }
-//     //     dbg!(tok.debug(text));
-//     //     tokens.push(tok);
-//     // }
-
-//     tokens
-// }

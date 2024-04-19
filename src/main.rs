@@ -1,9 +1,9 @@
 mod lexer;
 mod parser;
 
-use lexer::Token;
+use lexer::{Location, Token};
 use parser::parse;
-use std::{fs, path::PathBuf};
+use std::{borrow::Borrow, fs, path::PathBuf};
 
 struct Source {
     id: SourceId,
@@ -11,24 +11,26 @@ struct Source {
     // path: PathBuf,
 }
 impl Source {
-    fn str(&self, token: &Token) -> &str {
-        debug_assert_eq!(self.id, token.loc.source_id);
-        let loc = &token.loc;
+    fn str<A: Borrow<Token>>(&self, token: A) -> &str {
+        self.str_loc(token.borrow().loc)
+    }
+    fn str_loc(&self, loc: Location) -> &str {
+        debug_assert_eq!(self.id, loc.source_id);
         &self.text[loc.start..loc.stop]
     }
 }
 
 #[derive(Default)]
 struct SourceManager {
-    sources: Vec<Source>,
+    sources: Vec<&'static Source>, // TODO
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct SourceId(u32);
 
 impl SourceManager {
-    fn load<I: Into<PathBuf>>(&mut self, path: I) -> &Source {
-        fn inner<'x>(manager: &'x mut SourceManager, path: PathBuf) -> &'x Source {
+    fn load<I: Into<PathBuf>>(&mut self, path: I) -> &'static Source {
+        fn inner<'x>(manager: &'x mut SourceManager, path: PathBuf) -> &'static Source {
             let id: u32 = manager.sources.len().try_into().unwrap();
             let id = SourceId(id);
 
@@ -38,7 +40,8 @@ impl SourceManager {
             }
 
             text.push('\0');
-            manager.sources.push(Source { id, text });
+            let source = Box::leak(Box::new(Source { id, text }));
+            manager.sources.push(source);
             manager.sources.last().unwrap()
         }
         inner(self, path.into())
@@ -46,7 +49,7 @@ impl SourceManager {
 }
 
 fn main() {
-    let path = "test.ninja";
+    let path = "build.ninja";
 
     let mut source_manager = SourceManager::default();
     parse(&mut source_manager, path);
