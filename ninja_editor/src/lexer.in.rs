@@ -1,4 +1,4 @@
-use crate::SourceId;
+use crate::ninja::SourceId;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Location {

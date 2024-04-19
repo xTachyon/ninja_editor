@@ -1,60 +1,11 @@
 use crate::{
     lexer::{Lexer, TokenKind},
-    Source, SourceManager,
+    Data, Edge, Rule, Source, SourceManager,
 };
 use slotmap::{new_key_type, SlotMap};
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 type K = TokenKind;
-
-#[derive(Debug, Default)]
-struct Rule<'x> {
-    name: &'x str,
-    command: String,
-    depfile: Option<String>,
-    deps: Option<String>,
-    description: Option<String>,
-    restat: Option<String>,
-    generator: Option<String>,
-}
-
-new_key_type! {
-    struct RuleKey;
-}
-
-struct Edge {
-    rule: RuleKey,
-    ins: Vec<String>,
-    outs: Vec<String>,
-}
-
-#[derive(Default)]
-struct Data<'x> {
-    rules: SlotMap<RuleKey, Rule<'x>>,
-    rules_by_name: HashMap<&'x str, RuleKey>,
-    edges: Vec<Edge>,
-    vars: HashMap<String, String>,
-    default: Option<String>,
-}
-impl<'x> Data<'x> {
-    fn new() -> Data<'x> {
-        let mut rules = SlotMap::with_key();
-        let phony = rules.insert(Rule {
-            name: "phony",
-            ..Default::default()
-        });
-
-        let rules_by_name = HashMap::from([("phony", phony)]);
-
-        Data {
-            rules,
-            rules_by_name,
-            edges: Vec::new(),
-            vars: HashMap::new(),
-            default: None,
-        }
-    }
-}
 
 struct Parser<'x> {
     lexer: Lexer<'x>,
@@ -198,7 +149,7 @@ fn parse_build<'x>(parser: &mut Parser<'x>, data: &mut Data) {
         parser.lexer.next();
 
         // args
-        let (key, value) = parse_let(parser);
+        let _ = parse_let(parser);
     }
 
     let edge = Edge { rule, ins, outs };
@@ -256,11 +207,10 @@ fn parse_item<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>, sm: &mut SourceM
     }
 }
 
-pub fn parse(sm: &mut SourceManager, path: &str) {
+pub fn parse(sm: &mut SourceManager, data: &mut Data, path: &Path) {
     let source = sm.load(path);
     let lexer = Lexer::new(&source.text, source.id);
     let mut parser = Parser { lexer, source };
-    let mut data = Data::new();
 
-    parse_item(&mut parser, &mut data, sm);
+    parse_item(&mut parser, data, sm);
 }

@@ -1,7 +1,7 @@
-[package]
-name = "ninja_tool"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+    "ninja_editor",
+    "ninja_editor_test",
+]
 
-[dependencies]
-slotmap = "1"
+resolver = "2"

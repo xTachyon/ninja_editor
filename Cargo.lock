@@ -3,10 +3,17 @@
 version = 3
 
 [[package]]
-name = "ninja_tool"
+name = "ninja_editor"
 version = "0.1.0"
 dependencies = [
  "slotmap",
+]
+
+[[package]]
+name = "ninja_editor_test"
+version = "0.1.0"
+dependencies = [
+ "ninja_editor",
 ]
 
 [[package]]
