@@ -1,14 +1,15 @@
 mod changelist;
 mod lexer;
 mod parser;
-use std::collections::HashMap;
-use std::path::Path;
-use changelist::ChangeList;
-use lexer::LOC_INVALID;
-use slotmap::{new_key_type, SlotMap};
 use crate::lexer::{Location, Token};
 use crate::parser::parse;
-use std::{borrow::Borrow, fs, path::PathBuf};
+use changelist::ChangeList;
+use fs_err as fs;
+use lexer::LOC_INVALID;
+use slotmap::{new_key_type, SlotMap};
+use std::collections::HashMap;
+use std::path::Path;
+use std::{borrow::Borrow, path::PathBuf};
 
 struct Source {
     id: SourceId,
@@ -88,20 +89,24 @@ pub struct Rule<'x> {
 
 new_key_type! {
     pub struct RuleKey;
+    pub struct EdgeKey;
 }
 
 struct Edge {
     rule: RuleKey,
     rule_loc: Location,
     // ins: Vec<String>,
-    outs: Vec<L<String>>,
+    // outs: Vec<L<String>>,
 }
 
 #[derive(Default)]
 pub struct Data<'x> {
     pub rules: SlotMap<RuleKey, Rule<'x>>,
+    edges: SlotMap<EdgeKey, Edge>,
+    pub nodes: HashMap<String, Vec<Location>>,
+    //
     rules_by_name: HashMap<&'x str, RuleKey>,
-    edges: Vec<Edge>,
+    //
     vars: HashMap<String, L<String>>,
     default: Option<L<String>>,
 }
@@ -117,8 +122,11 @@ impl<'x> Data<'x> {
 
         Data {
             rules,
+            edges: SlotMap::with_key(),
+            nodes: HashMap::new(),
+            //
             rules_by_name,
-            edges: Vec::new(),
+            //
             vars: HashMap::new(),
             default: None,
         }
@@ -139,9 +147,9 @@ impl Ninja {
 
         Ninja { sm, data }
     }
-    //  fn load<P: AsRef<Path>>(path: P) {
-    //     Self::load_impl(path.as_ref())
-    // }
+    pub fn load<P: AsRef<Path>>(path: P) -> Ninja {
+        Self::load_impl(path.as_ref())
+    }
     pub fn load_folder<P: AsRef<Path>>(path: P) -> Ninja {
         Self::load_impl(path.as_ref().join("build.ninja").as_path())
     }

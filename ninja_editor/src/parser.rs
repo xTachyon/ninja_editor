@@ -82,6 +82,7 @@ fn parse_rule<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>) {
 }
 
 fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
+    let mut ins = Vec::new();
     let mut outs = Vec::new();
 
     loop {
@@ -119,8 +120,6 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
         }
     }
 
-    let mut ins = Vec::new();
-
     if parser.lexer.maybe_peek(K::Pipe) {
         // Add all implicit deps
         loop {
@@ -154,13 +153,15 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
         let _ = parse_let(parser);
     }
 
+    for i in outs.iter().chain(ins.iter()) {
+        data.nodes.entry(i.elem.clone()).or_default().push(i.loc);
+    }
     let edge = Edge {
         rule,
         rule_loc: rule_name_token.loc,
-        outs,
     };
 
-    data.edges.push(edge);
+    data.edges.insert(edge);
 }
 
 fn parse_var(parser: &mut Parser<'_>, data: &mut Data) {

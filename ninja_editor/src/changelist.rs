@@ -3,22 +3,13 @@ use filetime::{set_file_mtime, FileTime};
 use crate::{lexer::Location, Ninja, RuleKey, Source, SourceId};
 use std::{collections::HashMap, fs};
 
-#[derive(Debug)]
-struct RuleChange {
-    rule: RuleKey,
-    new_name: String,
-}
-
-#[derive(Debug)]
-enum Change {
-    RuleRename(RuleChange),
-}
 
 struct ChangeRaw<'x> {
     loc: Location,
     new_text: &'x str,
 }
 
+#[derive(Default)]
 struct ChangesRaw<'x> {
     files: HashMap<SourceId, Vec<ChangeRaw<'x>>>,
 }
@@ -33,48 +24,34 @@ impl<'x> ChangesRaw<'x> {
 
 pub struct ChangeList<'x> {
     ninja: &'x Ninja,
-    changes: Vec<Change>,
+    changes: ChangesRaw<'x>,
 }
 impl<'x> ChangeList<'x> {
     pub(crate) fn new(ninja: &Ninja) -> ChangeList {
         ChangeList {
             ninja,
-            changes: Vec::new(),
+            changes: ChangesRaw::default(),
         }
     }
-    pub fn rename_rule(&mut self, rule: RuleKey, new_name: String) {
-        self.changes
-            .push(Change::RuleRename(RuleChange { rule, new_name }));
+
+    pub fn rename_rule(&mut self, rule_key: RuleKey, new_name: &'x str) {
+        let rule = &self.ninja.data.rules[rule_key];
+        self.changes.add_change(rule.name.loc, new_name);
+    
+        for i in self.ninja.data.edges.values().filter(|x| rule_key == x.rule) {
+            self.changes.add_change(i.rule_loc, new_name);
+        }
+    }
+
+    pub fn change(&mut self, loc: Location, new_text: &'x str) {
+        self.changes.add_change(loc, new_text);
     }
 
     pub fn commit(self) {
-        let mut changes = ChangesRaw {
-            files: HashMap::new(),
-        };
-
-        for i in self.changes.iter() {
-            process_changes(self.ninja, &mut changes, i);
-        }
-
-        for (source, changes) in changes.files {
+        for (source, changes) in self.changes.files {
             let source = self.ninja.sm.get(source);
             create_new_file(source, changes);
         }
-    }
-}
-
-fn process_rule_change<'x>(ninja: &Ninja, changes: &mut ChangesRaw<'x>, c: &'x RuleChange) {
-    let rule = &ninja.data.rules[c.rule];
-    changes.add_change(rule.name.loc, &c.new_name);
-
-    for i in ninja.data.edges.iter().filter(|x| c.rule == x.rule) {
-        changes.add_change(i.rule_loc, &c.new_name);
-    }
-}
-
-fn process_changes<'x>(ninja: &Ninja, changes: &mut ChangesRaw<'x>, c: &'x Change) {
-    match c {
-        Change::RuleRename(rule_rename) => process_rule_change(ninja, changes, rule_rename),
     }
 }
 
@@ -86,6 +63,7 @@ fn create_new_file(source: &Source, changes: Vec<ChangeRaw>) {
 
     set_file_mtime(&source.path, mtime).unwrap();
 }
+
 fn generate_new_file(original_text: &str, mut changes: Vec<ChangeRaw>) -> String {
     changes.sort_by_key(|x| x.loc);
 
