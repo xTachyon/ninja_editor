@@ -15,7 +15,7 @@ use std::{borrow::Borrow, fs, path::PathBuf};
 struct Source {
     id: SourceId,
     text: String,
-    // path: PathBuf,
+    path: PathBuf,
 }
 impl Source {
     fn str<A: Borrow<Token>>(&self, token: A) -> &str {
@@ -47,13 +47,13 @@ impl SourceManager {
             let id: u32 = manager.sources.len().try_into().unwrap();
             let id = SourceId(id);
 
-            let mut text = fs::read_to_string(path).unwrap();
+            let mut text = fs::read_to_string(&path).unwrap();
             if text.as_bytes().contains(&b'\0') {
                 todo!("text can't contain zeros");
             }
 
             text.push('\0');
-            let source = Box::leak(Box::new(Source { id, text }));
+            let source = Box::leak(Box::new(Source { id, text, path }));
             manager.sources.push(source);
             manager.sources.last().unwrap()
         }

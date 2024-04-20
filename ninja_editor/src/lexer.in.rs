@@ -238,7 +238,7 @@ impl<'x> Lexer<'x> {
             }
             */
         }
-		self.offset = offset;
+		    self.offset = offset;
         if path {
             self.eat_whitespace();
         }

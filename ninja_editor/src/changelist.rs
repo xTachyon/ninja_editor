@@ -1,5 +1,7 @@
-use crate::{lexer::Location, Ninja, RuleKey, SourceId};
-use std::collections::HashMap;
+use filetime::{set_file_mtime, FileTime};
+
+use crate::{lexer::Location, Ninja, RuleKey, Source, SourceId};
+use std::{collections::HashMap, fs};
 
 #[derive(Debug)]
 struct RuleChange {
@@ -56,8 +58,7 @@ impl<'x> ChangeList<'x> {
 
         for (source, changes) in changes.files {
             let source = self.ninja.sm.get(source);
-            let text = source.text();
-            create_new_file(text, changes);
+            create_new_file(source, changes);
         }
     }
 }
@@ -77,7 +78,15 @@ fn process_changes<'x>(ninja: &Ninja, changes: &mut ChangesRaw<'x>, c: &'x Chang
     }
 }
 
-fn create_new_file(original_text: &str, mut changes: Vec<ChangeRaw>) {
+fn create_new_file(source: &Source, changes: Vec<ChangeRaw>) {
+    let mtime = FileTime::from_last_modification_time(&source.path.metadata().unwrap());
+
+    let text = generate_new_file(source.text(), changes);
+    fs::write(&source.path, text).unwrap();
+
+    set_file_mtime(&source.path, mtime).unwrap();
+}
+fn generate_new_file(original_text: &str, mut changes: Vec<ChangeRaw>) -> String {
     changes.sort_by_key(|x| x.loc);
 
     let mut text = String::with_capacity(original_text.len());
@@ -89,5 +98,7 @@ fn create_new_file(original_text: &str, mut changes: Vec<ChangeRaw>) {
         original_text_offset = i.loc.stop;
     }
 
-    println!("{}", text);
+    text += &original_text[original_text_offset..];
+
+    text
 }
