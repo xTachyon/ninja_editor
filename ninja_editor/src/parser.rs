@@ -1,6 +1,6 @@
 use crate::{
     lexer::{Lexer, TokenKind},
-    Data, Edge, Locatable, Rule, Source, SourceManager,
+    Data, Edge, Rule, Source, SourceManager, L,
 };
 use std::path::Path;
 
@@ -21,7 +21,7 @@ macro_rules! expect {
     }};
 }
 
-fn parse_let(parser: &mut Parser) -> (String, String) {
+fn parse_let(parser: &mut Parser) -> (String, L<String>) {
     let key_token = parser.lexer.read_ident();
     let key = parser.source.str_loc(key_token).to_string();
     expect!(parser, Equals);
@@ -33,7 +33,7 @@ fn parse_let(parser: &mut Parser) -> (String, String) {
 fn parse_rule<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>) {
     let name_token = expect!(parser, Ident);
     let name = parser.source.str(&name_token);
-    let name = Locatable {
+    let name = L {
         loc: name_token.loc,
         elem: name,
     };
@@ -84,23 +84,19 @@ fn parse_rule<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>) {
 fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
     let mut outs = Vec::new();
 
-    let mut tmp = String::new();
     loop {
-        tmp.clear();
-
         let tmp = parser.lexer.read_path();
-        // outs.push(tmp.clone());
-
-        if tmp.is_empty() {
+        if tmp.elem.is_empty() {
             break;
         }
+
+        outs.push(tmp);
     }
 
     if parser.lexer.maybe_peek(K::Pipe) {
         loop {
-            tmp.clear();
             let tmp = parser.lexer.read_path();
-            if tmp.is_empty() {
+            if tmp.elem.is_empty() {
                 break;
             }
             // TODO: ignore for now
@@ -117,10 +113,8 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
     };
 
     loop {
-        tmp.clear();
-
         let tmp = parser.lexer.read_path();
-        if tmp.is_empty() {
+        if tmp.elem.is_empty() {
             break;
         }
     }
@@ -130,28 +124,24 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
     if parser.lexer.maybe_peek(K::Pipe) {
         // Add all implicit deps
         loop {
-            tmp.clear();
-
             let tmp = parser.lexer.read_path();
-            if tmp.is_empty() {
+            if tmp.elem.is_empty() {
                 break;
             }
 
-            ins.push(tmp.clone());
+            ins.push(tmp);
         }
     }
 
     if parser.lexer.maybe_peek(K::Pipe2) {
         // Add all order-only deps
         loop {
-            tmp.clear();
-
             let tmp = parser.lexer.read_path();
-            if tmp.is_empty() {
+            if tmp.elem.is_empty() {
                 break;
             }
 
-            ins.push(tmp.clone());
+            ins.push(tmp);
         }
     }
 
@@ -195,7 +185,7 @@ fn parse_default(parser: &mut Parser<'_>, data: &mut Data) {
 fn parse_include(parser: &mut Parser<'_>, data: &mut Data, sm: &mut SourceManager) {
     let path = parser.lexer.read_path();
 
-    let source = sm.load(path);
+    let source = sm.load(path.elem);
     let lexer = Lexer::new(&source.text, source.id);
     let mut parser = Parser { lexer, source };
 
@@ -215,7 +205,7 @@ fn parse_item<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>, sm: &mut SourceM
             K::Build => parse_build(parser, data),
             K::Default => parse_default(parser, data),
             K::Ident => parse_var(parser, data),
-            K::Include => parse_include(parser, data, sm),
+            K::Include | K::Subninja => parse_include(parser, data, sm),
             _ => todo!("{:?}", first.kind),
         };
     }

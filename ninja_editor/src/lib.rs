@@ -63,21 +63,21 @@ impl SourceManager {
 }
 
 #[derive(Default, Debug, Clone, Copy)]
-pub struct Locatable<T> {
+pub struct L<T> {
     pub elem: T,
     loc: Location,
 }
-impl<T> Locatable<T> {
+impl<T> L<T> {
     fn new(elem: T, loc: Location) -> Self {
         Self { elem, loc }
     }
 }
 
-type LocatableStr<'x> = Locatable<&'x str>;
+type LStr<'x> = L<&'x str>;
 
 #[derive(Default, Debug)]
 pub struct Rule<'x> {
-    pub name: LocatableStr<'x>,
+    pub name: LStr<'x>,
     // command: String,
     // depfile: Option<String>,
     // deps: Option<String>,
@@ -94,7 +94,7 @@ struct Edge {
     rule: RuleKey,
     rule_loc: Location,
     // ins: Vec<String>,
-    outs: Vec<Locatable<String>>,
+    outs: Vec<L<String>>,
 }
 
 #[derive(Default)]
@@ -102,14 +102,14 @@ pub struct Data<'x> {
     pub rules: SlotMap<RuleKey, Rule<'x>>,
     rules_by_name: HashMap<&'x str, RuleKey>,
     edges: Vec<Edge>,
-    vars: HashMap<String, String>,
-    default: Option<String>,
+    vars: HashMap<String, L<String>>,
+    default: Option<L<String>>,
 }
 impl<'x> Data<'x> {
     fn new() -> Data<'x> {
         let mut rules = SlotMap::with_key();
         let phony = rules.insert(Rule {
-            name: Locatable::new("phony", LOC_INVALID),
+            name: L::new("phony", LOC_INVALID),
             ..Rule::default()
         });
 

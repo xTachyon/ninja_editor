@@ -1,4 +1,4 @@
-use crate::SourceId;
+use crate::{L, SourceId};
 
 #[derive(Default, Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Location {
@@ -172,12 +172,13 @@ impl<'x> Lexer<'x> {
             */
         }
     }
-    fn read_eval_string(&mut self, path: bool) -> String {
+    fn read_eval_string(&mut self, path: bool) -> L<String> {
         let mut ret = String::new();
         let s = &mut ret;
 
-        let mut marker = 0;
+        let start_offset = self.offset;
         let mut offset = self.offset;
+        let mut marker = 0;
         let mut start;
         #[allow(unused_unsafe)]
         'lex: loop {
@@ -248,16 +249,23 @@ impl<'x> Lexer<'x> {
             */
         }
 		    self.offset = offset;
+
+        let loc = Location {
+          start: start_offset,
+          stop: self.offset,
+          source_id: self.source_id,
+        };
+
         if path {
             self.eat_whitespace();
         }
         
-        ret
+        L::new(ret, loc)
     }
-    pub fn read_path(&mut self) -> String {
+    pub fn read_path(&mut self) -> L<String> {
         self.read_eval_string(true)
     }
-    pub fn read_var_value(&mut self) -> String {
+    pub fn read_var_value(&mut self) -> L<String> {
         self.read_eval_string(false)
     }
     pub fn read_ident(&mut self) -> Location {
