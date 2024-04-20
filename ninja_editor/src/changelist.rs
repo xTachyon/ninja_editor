@@ -65,7 +65,7 @@ impl<'x> ChangeList<'x> {
 
 fn process_rule_change<'x>(ninja: &Ninja, changes: &mut ChangesRaw<'x>, c: &'x RuleChange) {
     let rule = &ninja.data.rules[c.rule];
-    changes.add_change(rule.name_loc, &c.new_name);
+    changes.add_change(rule.name.loc, &c.new_name);
 
     for i in ninja.data.edges.iter().filter(|x| c.rule == x.rule) {
         changes.add_change(i.rule_loc, &c.new_name);

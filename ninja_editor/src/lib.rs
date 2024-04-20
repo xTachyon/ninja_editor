@@ -1,13 +1,11 @@
 mod changelist;
 mod lexer;
 mod parser;
-
 use std::collections::HashMap;
 use std::path::Path;
-
 use changelist::ChangeList;
+use lexer::LOC_INVALID;
 use slotmap::{new_key_type, SlotMap};
-
 use crate::lexer::{Location, Token};
 use crate::parser::parse;
 use std::{borrow::Borrow, fs, path::PathBuf};
@@ -64,16 +62,28 @@ impl SourceManager {
     }
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub struct Locatable<T> {
+    pub elem: T,
+    loc: Location,
+}
+impl<T> Locatable<T> {
+    fn new(elem: T, loc: Location) -> Self {
+        Self { elem, loc }
+    }
+}
+
+type LocatableStr<'x> = Locatable<&'x str>;
+
 #[derive(Default, Debug)]
 pub struct Rule<'x> {
-    pub name: &'x str,
-    name_loc: Location,
-    command: String,
-    depfile: Option<String>,
-    deps: Option<String>,
-    description: Option<String>,
-    restat: Option<String>,
-    generator: Option<String>,
+    pub name: LocatableStr<'x>,
+    // command: String,
+    // depfile: Option<String>,
+    // deps: Option<String>,
+    // description: Option<String>,
+    // restat: Option<String>,
+    // generator: Option<String>,
 }
 
 new_key_type! {
@@ -84,7 +94,7 @@ struct Edge {
     rule: RuleKey,
     rule_loc: Location,
     // ins: Vec<String>,
-    // outs: Vec<String>,
+    outs: Vec<Locatable<String>>,
 }
 
 #[derive(Default)]
@@ -99,7 +109,7 @@ impl<'x> Data<'x> {
     fn new() -> Data<'x> {
         let mut rules = SlotMap::with_key();
         let phony = rules.insert(Rule {
-            name: "phony",
+            name: Locatable::new("phony", LOC_INVALID),
             ..Rule::default()
         });
 

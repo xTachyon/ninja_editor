@@ -7,6 +7,12 @@ pub struct Location {
     pub source_id: SourceId,
 }
 
+pub(crate) const LOC_INVALID: Location = Location {
+  start: usize::MAX,
+  stop: usize::MAX,
+  source_id: SourceId(u32::MAX),
+};
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenKind {
     Eof,
@@ -166,7 +172,10 @@ impl<'x> Lexer<'x> {
             */
         }
     }
-    pub fn read_eval_string(&mut self, s: &mut String, path: bool) {
+    fn read_eval_string(&mut self, path: bool) -> String {
+        let mut ret = String::new();
+        let s = &mut ret;
+
         let mut marker = 0;
         let mut offset = self.offset;
         let mut start;
@@ -242,12 +251,14 @@ impl<'x> Lexer<'x> {
         if path {
             self.eat_whitespace();
         }
+        
+        ret
     }
-    pub fn read_path(&mut self, s: &mut String) {
-        self.read_eval_string(s, true)
+    pub fn read_path(&mut self) -> String {
+        self.read_eval_string(true)
     }
-    pub fn read_var_value(&mut self, s: &mut String) {
-        self.read_eval_string(s, false)
+    pub fn read_var_value(&mut self) -> String {
+        self.read_eval_string(false)
     }
     pub fn read_ident(&mut self) -> Location {
         let next = self.next();

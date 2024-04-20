@@ -1,6 +1,6 @@
 use crate::{
     lexer::{Lexer, TokenKind},
-    Data, Edge, Rule, Source, SourceManager,
+    Data, Edge, Locatable, Rule, Source, SourceManager,
 };
 use std::path::Path;
 
@@ -25,8 +25,7 @@ fn parse_let(parser: &mut Parser) -> (String, String) {
     let key_token = parser.lexer.read_ident();
     let key = parser.source.str_loc(key_token).to_string();
     expect!(parser, Equals);
-    let mut value = String::new();
-    parser.lexer.read_var_value(&mut value);
+    let value = parser.lexer.read_var_value();
 
     (key, value)
 }
@@ -34,11 +33,14 @@ fn parse_let(parser: &mut Parser) -> (String, String) {
 fn parse_rule<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>) {
     let name_token = expect!(parser, Ident);
     let name = parser.source.str(&name_token);
+    let name = Locatable {
+        loc: name_token.loc,
+        elem: name,
+    };
     expect!(parser, Newline);
 
-    let mut rule = Rule {
+    let rule = Rule {
         name,
-        name_loc: name_token.loc,
         ..Default::default()
     };
     let mut has_command = false;
@@ -46,27 +48,37 @@ fn parse_rule<'x>(parser: &mut Parser<'x>, data: &mut Data<'x>) {
     while let K::Indent = parser.lexer.peek().kind {
         parser.lexer.next();
 
-        let (key, value) = parse_let(parser);
+        let (key, _value) = parse_let(parser);
 
         match key.as_str() {
             "command" => {
-                rule.command = value;
+                // rule.command = value;
                 has_command = true;
             }
-            "depfile" => rule.depfile = Some(value),
-            "deps" => rule.deps = Some(value),
-            "description" => rule.description = Some(value),
-            "restat" => rule.restat = Some(value),
-            "generator" => rule.generator = Some(value),
+            "depfile" => {
+                // rule.depfile = Some(value)
+            }
+            "deps" => {
+                // rule.deps = Some(value),
+            }
+            "description" => {
+                // rule.description = Some(value),
+            }
+            "restat" => {
+                // rule.restat = Some(value),
+            }
+            "generator" => {
+                // rule.generator = Some(value),
+            }
             _ => todo!("unknown key `{key}`"),
         }
     }
 
     assert!(has_command);
 
-    assert!(!data.rules_by_name.contains_key(name));
+    assert!(!data.rules_by_name.contains_key(name.elem));
     let rule = data.rules.insert(rule);
-    data.rules_by_name.insert(name, rule);
+    data.rules_by_name.insert(name.elem, rule);
 }
 
 fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
@@ -76,8 +88,8 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
     loop {
         tmp.clear();
 
-        parser.lexer.read_eval_string(&mut tmp, true);
-        outs.push(tmp.clone());
+        let tmp = parser.lexer.read_path();
+        // outs.push(tmp.clone());
 
         if tmp.is_empty() {
             break;
@@ -87,7 +99,7 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
     if parser.lexer.maybe_peek(K::Pipe) {
         loop {
             tmp.clear();
-            parser.lexer.read_eval_string(&mut tmp, true);
+            let tmp = parser.lexer.read_path();
             if tmp.is_empty() {
                 break;
             }
@@ -107,7 +119,7 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
     loop {
         tmp.clear();
 
-        parser.lexer.read_eval_string(&mut tmp, true);
+        let tmp = parser.lexer.read_path();
         if tmp.is_empty() {
             break;
         }
@@ -120,7 +132,7 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
         loop {
             tmp.clear();
 
-            parser.lexer.read_eval_string(&mut tmp, true);
+            let tmp = parser.lexer.read_path();
             if tmp.is_empty() {
                 break;
             }
@@ -134,7 +146,7 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
         loop {
             tmp.clear();
 
-            parser.lexer.read_eval_string(&mut tmp, true);
+            let tmp = parser.lexer.read_path();
             if tmp.is_empty() {
                 break;
             }
@@ -155,6 +167,7 @@ fn parse_build(parser: &mut Parser<'_>, data: &mut Data) {
     let edge = Edge {
         rule,
         rule_loc: rule_name_token.loc,
+        outs,
     };
 
     data.edges.push(edge);
@@ -171,8 +184,7 @@ fn parse_var(parser: &mut Parser<'_>, data: &mut Data) {
 }
 
 fn parse_default(parser: &mut Parser<'_>, data: &mut Data) {
-    let mut s = String::new();
-    parser.lexer.read_path(&mut s);
+    let s = parser.lexer.read_path();
 
     match data.default {
         Some(_) => panic!("default edge already defined"),
@@ -181,8 +193,7 @@ fn parse_default(parser: &mut Parser<'_>, data: &mut Data) {
 }
 
 fn parse_include(parser: &mut Parser<'_>, data: &mut Data, sm: &mut SourceManager) {
-    let mut path = String::new();
-    parser.lexer.read_path(&mut path);
+    let path = parser.lexer.read_path();
 
     let source = sm.load(path);
     let lexer = Lexer::new(&source.text, source.id);
