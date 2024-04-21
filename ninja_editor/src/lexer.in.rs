@@ -85,7 +85,6 @@ impl<'x> Lexer<'x> {
         let token;
         let mut marker = 0;
         
-        #[allow(unused_unsafe)]
         #[allow(clippy::absurd_extreme_comparisons)]
         /*!re2c
         re2c:define:YYCTYPE = "u8";
@@ -160,7 +159,6 @@ impl<'x> Lexer<'x> {
     fn eat_whitespace(&mut self) {
         let mut marker = 0;
         let mut offset = self.offset;
-        #[allow(unused_unsafe)]
         'lex: loop {
             self.offset = offset;
             /*!re2c
@@ -180,7 +178,6 @@ impl<'x> Lexer<'x> {
         let mut offset = self.offset;
         let mut marker = 0;
         let mut start;
-        #[allow(unused_unsafe)]
         'lex: loop {
             start = offset;
             // https://github.com/ninja-build/ninja/blob/master/src/lexer.in.cc
