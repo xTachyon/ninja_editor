@@ -4,7 +4,7 @@ use ninja_editor::Ninja;
 fn main() {
     let prefix = "p_";
 
-    let ninja = Ninja::load("debug/build.ninja");
+    let ninja = Ninja::load("release_32/build.ninja");
     let data = ninja.data();
     let mut changelist = ninja.change();
     let bump = Bump::new();
@@ -26,11 +26,11 @@ fn main() {
             }
             continue;
         }
-        if k.ends_with("CMakeLists.txt")
-            || k.ends_with(".cmake")
-            || k.ends_with(".cmake.in")
-            || k.ends_with("vcpkg.json")
-            || k.starts_with("/usr/share/cmake")
+        if k.starts_with("/usr/share/cmake")
+            // || k.ends_with("CMakeLists.txt")
+            // || k.ends_with(".cmake")
+            // || k.ends_with(".cmake.in")
+            // || k.ends_with("vcpkg.json")
         {
             let text = bump.alloc_str(&format!("{}{}", prefix, k));
             for loc in v {
