@@ -2,9 +2,9 @@ use crate::{L, SourceId};
 
 #[derive(Default, Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Location {
-    pub start: usize,
-    pub stop: usize,
-    pub source_id: SourceId,
+    pub(crate) start: usize,
+    pub(crate) stop: usize,
+    pub(crate) source_id: SourceId,
 }
 
 pub(crate) const LOC_INVALID: Location = Location {
